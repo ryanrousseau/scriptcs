@@ -63,5 +63,7 @@ namespace ScriptCs.Contracts
         string PackagesFolder { get; }
 
         string NugetFile { get; }
+
+        string GlobalConfigFile { get; }
     }
 }

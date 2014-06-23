@@ -455,6 +455,11 @@ namespace ScriptCs.Hosting.Tests
                 {
                     get { throw new NotImplementedException(); }
                 }
+
+                public string GlobalConfigFile
+                {
+                    get { throw new NotImplementedException(); }
+                }
             }
         }
     }

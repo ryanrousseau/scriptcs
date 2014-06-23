@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-
 using ScriptCs.Contracts;
 
 namespace ScriptCs
@@ -181,6 +180,11 @@ namespace ScriptCs
         public virtual string NugetFile
         {
             get { return "nuget.config"; }
+        }
+
+        public virtual string GlobalConfigFile
+        {
+            get { return Path.Combine(ModulesFolder, "scriptcs.opts"); }
         }
     }
 }

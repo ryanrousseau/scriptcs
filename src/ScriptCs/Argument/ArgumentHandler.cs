@@ -1,8 +1,8 @@
-﻿using PowerArgs;
-using ScriptCs.Contracts;
-using System;
+﻿using System;
 using System.Linq;
 using System.Reflection;
+using PowerArgs;
+using ScriptCs.Contracts;
 
 namespace ScriptCs.Argument
 {
@@ -28,15 +28,19 @@ namespace ScriptCs.Argument
             var sr = SplitScriptArgs(args);
 
             var commandArgs = _argumentParser.Parse(sr.CommandArguments);
-            var configArgs = _configFileParser.Parse(GetFileContent(commandArgs != null ? commandArgs.Config : "scriptcs.opts"));
-            var finalArguments = ReconcileArguments(configArgs ?? new ScriptCsArgs(), commandArgs, sr);
+            var localConfigFile = commandArgs != null ? commandArgs.Config : "scriptcs.opts";
+            var localConfigPath = string.Format("{0}\\{1}", _fileSystem.CurrentDirectory, localConfigFile);
+            var configArgs = _configFileParser.Parse(GetFileContent(localConfigPath));
+            var globalConfigArgs = _configFileParser.Parse(GetFileContent(_fileSystem.GlobalConfigFile));
+
+            var finalArguments = ReconcileArguments(globalConfigArgs ?? new ScriptCsArgs(), configArgs, sr);
+            finalArguments = ReconcileArguments(finalArguments, commandArgs, sr);
 
             return new ArgumentParseResult(args, finalArguments, sr.ScriptArguments);
         }
 
-        private string GetFileContent(string fileName)
+        private string GetFileContent(string filePath)
         {
-            string filePath = _fileSystem.CurrentDirectory + '\\' + fileName;
             if (_fileSystem.FileExists(filePath))
             {
                 return _fileSystem.ReadFile(filePath);
@@ -65,35 +69,35 @@ namespace ScriptCs.Argument
             return result;
         }
 
-        private static ScriptCsArgs ReconcileArguments(ScriptCsArgs configArgs, ScriptCsArgs commandArgs, SplitResult splitResult)
+        private static ScriptCsArgs ReconcileArguments(ScriptCsArgs baseArgs, ScriptCsArgs overrideArgs, SplitResult splitResult)
         {
-            if (configArgs == null)
-                return commandArgs;
+            if (baseArgs == null)
+                return overrideArgs;
 
-            if (commandArgs == null)
-                return configArgs;
+            if (overrideArgs == null)
+                return baseArgs;
 
             foreach (var property in typeof(ScriptCsArgs).GetProperties(BindingFlags.Instance | BindingFlags.Public))
             {
-                var configValue = property.GetValue(configArgs);
-                var commandValue = property.GetValue(commandArgs);
+                var currentValue = property.GetValue(baseArgs);
+                var overrideValue = property.GetValue(overrideArgs);
                 var defaultValue = GetPropertyDefaultValue(property);
 
-                if (!object.Equals(configValue, commandValue))
+                if (!object.Equals(currentValue, overrideValue))
                 {
-                    if (!object.Equals(commandValue, defaultValue))
+                    if (!object.Equals(overrideValue, defaultValue))
                     {
-                        property.SetValue(configArgs, commandValue);
+                        property.SetValue(baseArgs, overrideValue);
                     }
                     else
                     {
                         if (IsCommandLinePresent(splitResult.CommandArguments, property))
-                            property.SetValue(configArgs, commandValue);
+                            property.SetValue(baseArgs, overrideValue);
                     }
                 }
             }
 
-            return configArgs;
+            return baseArgs;
         }
 
         private static bool IsCommandLinePresent(string[] args, PropertyInfo property)
